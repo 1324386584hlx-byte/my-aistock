@@ -44,9 +44,9 @@ def login_page():
 # ======================
 def get_data(code, start="2020-01-01"):
     try:
-        df = yf.download(f"{code}.SS", start="2020-01-01")
-df = df.rename(columns={"Close": "close", "Volume": "volume"})
-        df["date"] = pd.to_datetime(df["date"])
+        df = yf.download(f"{code}.SS", start=start)
+        df = df.rename(columns={"Close": "close", "Volume": "volume"})
+        df["date"] = pd.to_datetime(df.index)
         df.set_index("date", inplace=True)
         return df
     except:
