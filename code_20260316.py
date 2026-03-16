@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import tushare as ts
+import yfinance as yf
 from xgboost import XGBClassifier
 from datetime import datetime, time
 import matplotlib.pyplot as plt
@@ -44,7 +44,8 @@ def login_page():
 # ======================
 def get_data(code, start="2020-01-01"):
     try:
-        df = ts.get_k_data(code, start=start)
+        df = yf.download(f"{code}.SS", start="2020-01-01")
+df = df.rename(columns={"Close": "close", "Volume": "volume"})
         df["date"] = pd.to_datetime(df["date"])
         df.set_index("date", inplace=True)
         return df
