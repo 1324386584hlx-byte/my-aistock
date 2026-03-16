@@ -139,7 +139,7 @@ def super_signal(code):
     last = data.iloc[-1]
 
     x = np.array([[
-        last.return, last.ma5, last.ma10, last.ma20, last.ma60,
+        last["return"], last.ma5, last.ma10, last.ma20, last.ma60,
         last.vol_ma5, last.vol_ma20, last.trend_up, last.vol_strength, last.strong_uptrend, last.breakout
     ]])
     pred = model.predict(x)[0]
