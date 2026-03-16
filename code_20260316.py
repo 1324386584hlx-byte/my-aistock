@@ -237,7 +237,7 @@ def backtest_final(code, money=100000):
         max_pos = 0.85 if lv ==2 else 0.7 if lv ==1 else 0.5
 
         x = np.array([[
-            row.return, row.ma5, row.ma10, row.ma20, row.ma60,
+            row.["return"], row.ma5, row.ma10, row.ma20, row.ma60,
             row.vol_ma5, row.vol_ma20, row.trend_up, row.vol_strength, row.strong_uptrend, row.breakout
         ]])
         pred = model.predict(x)[0]
