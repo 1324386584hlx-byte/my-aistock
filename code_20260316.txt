@@ -4,3 +4,4 @@ tushare
 xgboost
 scikit-learn
 matplotlib
+requests
