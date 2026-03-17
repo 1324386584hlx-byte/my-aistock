@@ -66,15 +66,13 @@ def build_features(df):
      data["ma60"] = data["close"].rolling(60).mean()
      data["vol_ma5"] = data["volume"].rolling(5).mean()
      data["vol_ma20"] = data["volume"].rolling(20).mean()
-     # ✅ 关键：先 dropna() 保证所有列长度一致
-     data.dropna(subset=["ma20", "ma60"], inplace=True)
-     # 现在再计算 trend_up
+     # ✅ 先计算所有列，再统一 dropna
      data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
      data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
      data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
      data["breakout"] = data["close"] > data["close"].rolling(20).max()
      data["target"] = (data["return"].shift(-1) > 0).astype(int)
-     data.dropna(inplace=True)
+     data.dropna(inplace=True)  # 统一清理所有 NaN，不再指定 subset
      return data
 
 # ======================
