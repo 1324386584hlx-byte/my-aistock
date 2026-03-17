@@ -1,6 +1,7 @@
 streamlit
 pandas
-tushare
+yfinance
 xgboost
 scikit-learn
 matplotlib
+requests
