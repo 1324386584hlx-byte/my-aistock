@@ -58,22 +58,35 @@ def get_sh_index():
 # 特征体系
 # ======================
 def build_features(df):
-     data = df.copy()
-     data["return"] = data["close"].pct_change()
-     data["ma5"] = data["close"].rolling(5).mean()
-     data["ma10"] = data["close"].rolling(10).mean()
-     data["ma20"] = data["close"].rolling(20).mean()
-     data["ma60"] = data["close"].rolling(60).mean()
-     data["vol_ma5"] = data["volume"].rolling(5).mean()
-     data["vol_ma20"] = data["volume"].rolling(20).mean()
-     # ✅ 先计算所有列，再统一 dropna
-     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
-     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
-     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
-     data["breakout"] = data["close"] > data["close"].rolling(20).max()
-     data["target"] = (data["return"].shift(-1) > 0).astype(int)
-     data.dropna(inplace=True)  # 统一清理所有 NaN，不再指定 subset
-     return data
+    # 先判断数据长度是否足够计算 ma60
+    if df is None or len(df) < 60:
+        return pd.DataFrame()  # 返回空 DataFrame，上层会做判断
+    
+    data = df.copy()
+
+    # 计算基础指标
+    data["return"] = data["close"].pct_change()
+    data["ma5"] = data["close"].rolling(5).mean()
+    data["ma10"] = data["close"].rolling(10).mean()
+    data["ma20"] = data["close"].rolling(20).mean()
+    data["ma60"] = data["close"].rolling(60).mean()
+
+    data["vol_ma5"] = data["volume"].rolling(5).mean()
+    data["vol_ma20"] = data["volume"].rolling(20).mean()
+
+    # 计算趋势特征
+    data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
+    data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
+    data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
+    data["breakout"] = data["close"] > data["close"].rolling(20).max()
+
+    # 目标变量
+    data["target"] = (data["return"].shift(-1) > 0).astype(int)
+
+    # 统一清理所有 NaN
+    data.dropna(inplace=True)
+
+    return data
 
 # ======================
 # 大盘强弱等级
@@ -126,9 +139,11 @@ def train_model(data):
 # ======================
 def super_signal(code):
     df = get_data(code, start="2025-01-01")
-    if df is None:
-        return "数据错误", 0
+    if df is None or len(df) < 60:
+        return "数据不足", 0
     data = build_features(df)
+    if data.empty:  # 处理 build_features 返回空的情况
+        return "数据不足", 0
     model, acc = train_model(data)
     lv = get_market_level()
     last = data.iloc[-1]
