@@ -59,22 +59,20 @@ def get_sh_index():
 # ======================
 def build_features(df):
     data = df.copy()
-    close = data["close"]
-    vol = data["volume"]
 
-    data["return"] = close.pct_change()
-    data["ma5"] = close.rolling(5).mean()
-    data["ma10"] = close.rolling(10).mean()
-    data["ma20"] = close.rolling(20).mean()
-    data["ma60"] = close.rolling(60).mean()
+    data["return"] = data["close"].pct_change()
+    data["ma5"] = data["close"].rolling(5).mean()
+    data["ma10"] = data["close"].rolling(10).mean()
+    data["ma20"] = data["close"].rolling(20).mean()
+    data["ma60"] = data["close"].rolling(60).mean()
 
-    data["vol_ma5"] = vol.rolling(5).mean()
-    data["vol_ma20"] = vol.rolling(20).mean()
+    data["vol_ma5"] = data["volume"].rolling(5).mean()
+    data["vol_ma20"] = data["volume"].rolling(20).mean()
 
-    data["trend_up"] = (close > data["ma20"]) & (data["ma20"] > data["ma60"])
+    data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
-    data["strong_uptrend"] = (close > data["ma20"] * 1.03)
-    data["breakout"] = close > close.rolling(20).max()
+    data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
+    data["breakout"] = data["close"] > data["close"].rolling(20).max()
 
     data["target"] = (data["return"].shift(-1) > 0).astype(int)
     data.dropna(inplace=True)
