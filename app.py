@@ -58,32 +58,31 @@ def get_sh_index():
 # 特征体系
 # ======================
 def build_features(df):
-    data = df.copy()
-
-    data["return"] = data["close"].pct_change()
-    data["ma5"] = data["close"].rolling(5).mean()
-    data["ma10"] = data["close"].rolling(10).mean()
-    data["ma20"] = data["close"].rolling(20).mean()
-    data["ma60"] = data["close"].rolling(60).mean()
-
-    data["vol_ma5"] = data["volume"].rolling(5).mean()
-    data["vol_ma20"] = data["volume"].rolling(20).mean()
-
-    data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
-    data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
-    data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
-    data["breakout"] = data["close"] > data["close"].rolling(20).max()
-
-    data["target"] = (data["return"].shift(-1) > 0).astype(int)
-    data.dropna(inplace=True)
-    return data
+     data = df.copy()
+     data["return"] = data["close"].pct_change()
+     data["ma5"] = data["close"].rolling(5).mean()
+     data["ma10"] = data["close"].rolling(10).mean()
+     data["ma20"] = data["close"].rolling(20).mean()
+     data["ma60"] = data["close"].rolling(60).mean()
+     data["vol_ma5"] = data["volume"].rolling(5).mean()
+     data["vol_ma20"] = data["volume"].rolling(20).mean()
+     # ✅ 关键：先 dropna() 保证所有列长度一致
+     data.dropna(subset=["ma20", "ma60"], inplace=True)
+     # 现在再计算 trend_up
+     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
+     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
+     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
+     data["breakout"] = data["close"] > data["close"].rolling(20).max()
+     data["target"] = (data["return"].shift(-1) > 0).astype(int)
+     data.dropna(inplace=True)
+     return data
 
 # ======================
 # 大盘强弱等级
 # ======================
 def get_market_level():
     sh = get_sh_index()
-    if sh is None:
+    if sh is None or len(sh) < 60:  # ✅ 增加长度判断
         return 0
     sh = build_features(sh)
     if len(sh) < 1:
