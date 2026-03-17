@@ -52,19 +52,16 @@ def get_data(code, start="2020-01-01"):
         return None
 
 def get_sh_index():
-    return get_data("000001")
+    # 从 2020-01-01 开始获取，保证数据量远大于 60 条
+    return get_data("000001", start="2020-01-01")
 
 # ======================
 # 特征体系
 # ======================
 def build_features(df):
-    # 先判断数据长度是否足够计算 ma60
-    if df is None or len(df) < 60:
-        return pd.DataFrame()  # 返回空 DataFrame，上层会做判断
-    
     data = df.copy()
 
-    # 计算基础指标
+    # 计算所有指标
     data["return"] = data["close"].pct_change()
     data["ma5"] = data["close"].rolling(5).mean()
     data["ma10"] = data["close"].rolling(10).mean()
@@ -74,18 +71,21 @@ def build_features(df):
     data["vol_ma5"] = data["volume"].rolling(5).mean()
     data["vol_ma20"] = data["volume"].rolling(20).mean()
 
-    # 计算趋势特征
+    # ✅ 关键：一次性过滤所有 NaN 行，保证后续计算无缺失值
+    data.dropna(inplace=True)
+
+    # 如果过滤后数据为空，直接返回空 DataFrame
+    if data.empty:
+        return data
+
+    # 现在所有列长度一致，可安全计算布尔特征
     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
     data["breakout"] = data["close"] > data["close"].rolling(20).max()
 
-    # 目标变量
     data["target"] = (data["return"].shift(-1) > 0).astype(int)
-
-    # 统一清理所有 NaN
     data.dropna(inplace=True)
-
     return data
 
 # ======================
@@ -93,10 +93,12 @@ def build_features(df):
 # ======================
 def get_market_level():
     sh = get_sh_index()
-    if sh is None or len(sh) < 60:  # ✅ 增加长度判断
+    # 数据为空或不足 60 条，直接返回 0（弱势）
+    if sh is None or len(sh) < 60:
         return 0
     sh = build_features(sh)
-    if len(sh) < 1:
+    # 特征构建后数据为空，也返回 0
+    if sh.empty:
         return 0
     last = sh.iloc[-1]
     if last["trend_up"] and last["strong_uptrend"]:
