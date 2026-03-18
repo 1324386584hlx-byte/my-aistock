@@ -10,7 +10,7 @@ import requests
 st.set_page_config(page_title="AI量化·最终完全体", layout="wide", page_icon="🧧")
 
 # ======================
-# 微信推送配置（你自己填）
+# 微信推送配置（替换成你的酷推地址）
 # ======================
 WECHAT_PUSH_URL = "https://push.coolpush.cn/你的地址"
 
@@ -18,6 +18,7 @@ def send_wechat(title, content):
     try:
         payload = {"title": title, "content": content}
         requests.post(WECHAT_PUSH_URL, json=payload, timeout=8)
+        return True
     except:
         return False
 
@@ -52,16 +53,16 @@ def get_data(code, start="2020-01-01"):
         return None
 
 def get_sh_index():
-    # 从 2020-01-01 开始获取，保证数据量远大于 60 条
+    # 从2020年开始获取，保证数据量≥60条
     return get_data("000001", start="2020-01-01")
 
 # ======================
-# 特征体系
+# 特征体系（核心修复：空数据直接返回）
 # ======================
 def build_features(df):
     data = df.copy()
 
-    # 计算所有指标
+    # 计算基础指标
     data["return"] = data["close"].pct_change()
     data["ma5"] = data["close"].rolling(5).mean()
     data["ma10"] = data["close"].rolling(10).mean()
@@ -71,14 +72,14 @@ def build_features(df):
     data["vol_ma5"] = data["volume"].rolling(5).mean()
     data["vol_ma20"] = data["volume"].rolling(20).mean()
 
-    # 过滤 NaN
+    # 过滤NaN行
     data.dropna(inplace=True)
-
-    # ✅ 关键：如果过滤后为空，直接返回空，不再往下执行任何特征计算
+    
+    # ✅ 核心修复：空数据直接返回，不执行后续计算
     if data.empty:
         return data
 
-    # 只有数据非空时才计算特征
+    # 仅当数据非空时计算布尔特征
     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
@@ -89,14 +90,15 @@ def build_features(df):
     return data
 
 # ======================
-# 大盘强弱等级
+# 大盘强弱等级（核心修复：多层容错）
 # ======================
 def get_market_level():
     sh = get_sh_index()
-    # 数据为空、不足 60 条，或特征构建后为空，都直接返回 0
+    # 数据为空/不足60条 → 直接返回0
     if sh is None or len(sh) < 60:
         return 0
     sh = build_features(sh)
+    # 特征构建后为空 → 直接返回0
     if sh.empty or len(sh) < 1:
         return 0
     last = sh.iloc[-1]
@@ -136,15 +138,18 @@ def train_model(data):
     return model, acc
 
 # ======================
-# 超级信号
+# 超级信号（核心修复：数据长度容错）
 # ======================
 def super_signal(code):
     df = get_data(code, start="2025-01-01")
+    # 数据为空/不足60条 → 直接返回提示
     if df is None or len(df) < 60:
-        return "数据不足", 0
+        return "🔴 数据不足", 0
     data = build_features(df)
-    if data.empty:  # 处理 build_features 返回空的情况
-        return "数据不足", 0
+    # 特征构建后为空 → 直接返回提示
+    if data.empty:
+        return "🔴 数据错误", 0
+    
     model, acc = train_model(data)
     lv = get_market_level()
     last = data.iloc[-1]
@@ -198,9 +203,6 @@ def generate_rich_report():
     msg += "• 连续错2次 → 休息"
     return msg
 
-# ======================
-# 自动定时任务（Streamlit 永久运行）
-# ======================
 def auto_push_task():
     last_push_date = st.session_state.get("last_push_date", "")
     now = datetime.now()
@@ -216,13 +218,18 @@ def auto_push_task():
         st.session_state["last_push_date"] = current_date
 
 # ======================
-# 回测引擎（完整最强版）
+# 回测引擎（完整最强版 + 容错）
 # ======================
 def backtest_final(code, money=100000):
     df = get_data(code)
-    if df is None:
+    # 数据为空/不足60条 → 直接返回None
+    if df is None or len(df) < 60:
         return None
     data = build_features(df)
+    # 特征构建后为空 → 直接返回None
+    if data.empty:
+        return None
+    
     model, acc = train_model(data)
     lv = get_market_level()
 
@@ -327,7 +334,7 @@ else:
             sig,acc = super_signal(c)
             if "超级买入" in sig:
                 st.success(f"{c}｜{sig}｜{acc}%")
-            elif "买入" in sig:
+            elif "可关注" in sig:
                 st.info(f"{c}｜{sig}｜{acc}%")
             else:
                 st.error(f"{c}｜{sig}")
@@ -337,13 +344,16 @@ else:
         code = st.text_input("股票代码", "600519")
         if st.button("开始回测"):
             res = backtest_final(code, 100000)
-            col1,col2,col3,col4 = st.columns(4)
-            col1.metric("收益率", f"{res['rate']}%")
-            col2.metric("收益", f"{res['profit']}元")
-            col3.metric("最终资产", f"{res['final']}元")
-            col4.metric("AI准确率", f"{res['acc']}%")
-            st.line_chart(res['hist'])
-            st.dataframe(res['trades'])
+            if res is None:
+                st.error("❌ 数据不足，无法回测（需要至少60条历史数据）")
+            else:
+                col1,col2,col3,col4 = st.columns(4)
+                col1.metric("收益率", f"{res['rate']}%")
+                col2.metric("收益", f"{res['profit']}元")
+                col3.metric("最终资产", f"{res['final']}元")
+                col4.metric("AI准确率", f"{res['acc']}%")
+                st.line_chart(res['hist'])
+                st.dataframe(res['trades'])
 
     elif menu == "📡 实时信号":
         st.title("📡 实时超级信号")
@@ -354,7 +364,7 @@ else:
                 sig,acc = super_signal(c.strip())
                 if "超级买入" in sig:
                     st.success(f"{c}｜{sig}｜{acc}%")
-                elif "买入" in sig:
+                elif "可关注" in sig:
                     st.info(f"{c}｜{sig}｜{acc}%")
                 else:
                     st.error(f"{c}｜{sig}")
@@ -363,8 +373,10 @@ else:
         st.title("📩 测试微信推送")
         if st.button("立即发送今日报告到微信"):
             report = generate_rich_report()
-            send_wechat("AI量化测试推送", report)
-            st.success("推送成功！")
+            if send_wechat("AI量化测试推送", report):
+                st.success("✅ 推送成功！")
+            else:
+                st.error("❌ 推送失败，请检查推送地址")
             st.code(report)
 
     elif menu == "📖 系统说明":
@@ -377,4 +389,9 @@ else:
         ✅ 趋势强重仓，弱则空仓
         ✅ 自动规避大跌
         ✅ 永久在线 24h
+        
+        **使用说明：**
+        1. 登录账号：admin，密码：123456
+        2. 回测需输入A股代码（如600519）
+        3. 推送功能需配置酷推地址
         """)
