@@ -71,14 +71,14 @@ def build_features(df):
     data["vol_ma5"] = data["volume"].rolling(5).mean()
     data["vol_ma20"] = data["volume"].rolling(20).mean()
 
-    # ✅ 关键：一次性过滤所有 NaN 行，保证后续计算无缺失值
+    # 过滤 NaN
     data.dropna(inplace=True)
 
-    # 如果过滤后数据为空，直接返回空 DataFrame
+    # ✅ 关键：如果过滤后为空，直接返回空，不再往下执行任何特征计算
     if data.empty:
         return data
 
-    # 现在所有列长度一致，可安全计算布尔特征
+    # 只有数据非空时才计算特征
     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
@@ -93,12 +93,11 @@ def build_features(df):
 # ======================
 def get_market_level():
     sh = get_sh_index()
-    # 数据为空或不足 60 条，直接返回 0（弱势）
+    # 数据为空、不足 60 条，或特征构建后为空，都直接返回 0
     if sh is None or len(sh) < 60:
         return 0
     sh = build_features(sh)
-    # 特征构建后数据为空，也返回 0
-    if sh.empty:
+    if sh.empty or len(sh) < 1:
         return 0
     last = sh.iloc[-1]
     if last["trend_up"] and last["strong_uptrend"]:
