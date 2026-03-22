@@ -10,7 +10,7 @@ import requests
 # ======================
 # Tushare 配置（替换成你的 Tushare Token）
 # ======================
-ts.set_token("你的TushareToken")
+ts.set_token("6ca3c88e6cdf09b502b4a0fcf6496d87eec5f48e53f879f0b35d290b")
 pro = ts.pro_api()
 
 # ======================
@@ -21,8 +21,8 @@ WECHAT_PUSH_URL = "https://push.coolpush.cn/你的地址"
 def send_wechat(title, content):
     try:
         payload = {"title": title, "content": content}
-        requests.post(WECHAT_PUSH_URL, json=payload, timeout=8)
-        return True
+        # 修复：requests.post 后加 return，确保函数正确返回
+        return requests.post(WECHAT_PUSH_URL, json=payload, timeout=8).status_code == 200
     except:
         return False
 
