@@ -53,7 +53,6 @@ def get_data(code, start="2020-01-01"):
         return None
 
 def get_sh_index():
-    # 从2020年开始获取，保证数据量≥60条
     return get_data("000001", start="2020-01-01")
 
 # ======================
@@ -62,7 +61,6 @@ def get_sh_index():
 def build_features(df):
     data = df.copy()
 
-    # 计算基础指标
     data["return"] = data["close"].pct_change()
     data["ma5"] = data["close"].rolling(5).mean()
     data["ma10"] = data["close"].rolling(10).mean()
@@ -72,14 +70,11 @@ def build_features(df):
     data["vol_ma5"] = data["volume"].rolling(5).mean()
     data["vol_ma20"] = data["volume"].rolling(20).mean()
 
-    # 过滤NaN行
     data.dropna(inplace=True)
-    
-    # ✅ 核心修复：空数据直接返回，不执行后续计算
+    # ✅ 核心：空数据直接返回，不执行后续计算
     if data.empty:
         return data
 
-    # 仅当数据非空时计算布尔特征
     data["trend_up"] = (data["close"] > data["ma20"]) & (data["ma20"] > data["ma60"])
     data["vol_strength"] = data["vol_ma5"] > data["vol_ma20"]
     data["strong_uptrend"] = (data["close"] > data["ma20"] * 1.03)
@@ -90,16 +85,14 @@ def build_features(df):
     return data
 
 # ======================
-# 大盘强弱等级（核心修复：多层容错）
+# 大盘强弱等级（多层容错）
 # ======================
 def get_market_level():
     sh = get_sh_index()
-    # 数据为空/不足60条 → 直接返回0
     if sh is None or len(sh) < 60:
         return 0
     sh = build_features(sh)
-    # 特征构建后为空 → 直接返回0
-    if sh.empty or len(sh) < 1:
+    if sh.empty:
         return 0
     last = sh.iloc[-1]
     if last["trend_up"] and last["strong_uptrend"]:
@@ -138,18 +131,15 @@ def train_model(data):
     return model, acc
 
 # ======================
-# 超级信号（核心修复：数据长度容错）
+# 超级信号（数据长度容错）
 # ======================
 def super_signal(code):
     df = get_data(code, start="2025-01-01")
-    # 数据为空/不足60条 → 直接返回提示
     if df is None or len(df) < 60:
         return "🔴 数据不足", 0
     data = build_features(df)
-    # 特征构建后为空 → 直接返回提示
     if data.empty:
         return "🔴 数据错误", 0
-    
     model, acc = train_model(data)
     lv = get_market_level()
     last = data.iloc[-1]
@@ -222,14 +212,11 @@ def auto_push_task():
 # ======================
 def backtest_final(code, money=100000):
     df = get_data(code)
-    # 数据为空/不足60条 → 直接返回None
     if df is None or len(df) < 60:
         return None
     data = build_features(df)
-    # 特征构建后为空 → 直接返回None
     if data.empty:
         return None
-    
     model, acc = train_model(data)
     lv = get_market_level()
 
@@ -389,9 +376,4 @@ else:
         ✅ 趋势强重仓，弱则空仓
         ✅ 自动规避大跌
         ✅ 永久在线 24h
-        
-        **使用说明：**
-        1. 登录账号：admin，密码：123456
-        2. 回测需输入A股代码（如600519）
-        3. 推送功能需配置酷推地址
         """)
