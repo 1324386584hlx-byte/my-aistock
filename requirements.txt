@@ -1,6 +1,6 @@
 streamlit
 pandas
-akshare
+tushare
 xgboost
 scikit-learn
 matplotlib
