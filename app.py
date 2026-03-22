@@ -64,7 +64,7 @@ def get_sh_index_data(start_date="2020-01-01", end_date="2026-12-31"):
 # ======================
 # 飞书推送配置（替换成你的飞书机器人Webhook地址）
 # ======================
-FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/你的WebhookKey"
+FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/b5162b51-57e3-4d9f-87ec-a97203261dda"
 
 def send_feishu(title, content):
     """飞书推送函数（适配最新接口规范）"""
