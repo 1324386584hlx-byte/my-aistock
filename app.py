@@ -10,13 +10,13 @@ import requests
 # ======================
 # Tushare 配置（替换成你的 Tushare Token）
 # ======================
-ts.set_token("你的TushareToken")
+ts.set_token("6ca3c88e6cdf09b502b4a0fcf6496d87eec5f48e53f879f0b35d290b")
 pro = ts.pro_api()
 
 # ======================
 # 飞书推送配置（替换成你的飞书机器人Webhook地址）
 # ======================
-FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/你的WebhookKey"
+FEISHU_WEBHOOK_URL = "https://open.feishu.cn/open-apis/bot/v2/hook/b5162b51-57e3-4d9f-87ec-a97203261dda"
 
 def send_feishu(title, content):
     """飞书推送函数（替代微信推送）"""
