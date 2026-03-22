@@ -1,6 +1,7 @@
 streamlit
 pandas
-baostock
+numpy
+yfinance
 xgboost
 scikit-learn
 matplotlib
